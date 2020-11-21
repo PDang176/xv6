@@ -491,9 +491,10 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-		struct proc *temp;
-		p = ptable.proc;
-    for(temp = ptable.proc; temp < &ptable.proc[NPROC]; temp++){
+		struct proc *temp = ptable.proc;
+		p = temp;
+		temp++;
+    for(; temp < &ptable.proc[NPROC]; temp++){
       if(temp->priority > p->priority){
 				p = temp;
 			}
