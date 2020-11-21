@@ -26,6 +26,7 @@ int uptime(void);
 int	exitS(int) __attribute__((noreturn));
 int waitS(int*);
 int waitpid(int, int*, int);
+void set_prior(int);
 
 // ulib.c
 int stat(const char*, struct stat*);

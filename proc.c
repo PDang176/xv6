@@ -112,6 +112,8 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
 
+	p->priority = 10;
+
   return p;
 }
 
@@ -199,6 +201,7 @@ fork(void)
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
+	np->priority = curproc->priority;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -459,6 +462,14 @@ waitpid(int pid, int* status, int options)
 	}
 }
 
+void set_prior(int prior_lvl)
+{
+	struct proc *curproc = myproc();
+	
+	curproc->priority = prior_lvl;
+	sched();
+}
+
 //PAGEBREAK: 42
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
@@ -480,24 +491,27 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
+		struct proc *temp;
+		p = ptable.proc;
+    for(temp = ptable.proc; temp < &ptable.proc[NPROC]; temp++){
+      if(temp->priority > p->priority){
+				p = temp;
+			}
+		}
+    // Switch to chosen process.  It is the process's job
+    // to release ptable.lock and then reacquire it
+    // before jumping back to us.
+    c->proc = p;
+    switchuvm(p);
+    p->state = RUNNING;
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
+    swtch(&(c->scheduler), p->context);
+    switchkvm();
 
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
+    // Process is done running for now.
+    // It should have changed its p->state before coming back.
+    c->proc = 0;
 
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      c->proc = 0;
-    }
     release(&ptable.lock);
 
   }
