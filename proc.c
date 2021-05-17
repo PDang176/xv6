@@ -90,6 +90,9 @@ found:
   p->pid = nextpid++;
 	p->priority = 10;
 
+	p->burstTime = 0;
+	p->start_time = ticks;
+
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -248,6 +251,11 @@ exit(void)
   end_op();
   curproc->cwd = 0;
 
+	uint endTime = ticks;
+	uint turnaroundtime = endTime - curproc->start_time;
+	cprintf(" Turnaround time is: %d\n", turnaroundtime);
+	cprintf(" Waiting time is: %d\n", turnaroundtime - curproc->burstTime); 
+
   acquire(&ptable.lock);
 
   // Parent might be sleeping in wait().
@@ -295,6 +303,11 @@ exitS(int status)
   iput(curproc->cwd);
   end_op();
   curproc->cwd = 0;
+
+	// uint endTime = ticks;
+	// uint turnaroundtime = endTime - curproc->start_time;
+	// cprintf("Turnaround time is: %d\n", turnaroundtime);
+	// cprintf("Waiting time is: %d\n", turnaroundtime - curproc->burstTime);
 
   acquire(&ptable.lock);
 
@@ -502,7 +515,7 @@ scheduler(void)
 				if(p1->state != RUNNABLE)				
 					continue;
 
-				if(prio->priority < p1->priority)
+				if(prio->priority > p1->priority)
 					prio = p1;
 			}
 			p = prio;
@@ -513,6 +526,7 @@ scheduler(void)
 			c->proc = p;
    		switchuvm(p);
  	 		p->state = RUNNING;
+			p->burstTime++;
 
  		  swtch(&(c->scheduler), p->context);
 	    switchkvm();
